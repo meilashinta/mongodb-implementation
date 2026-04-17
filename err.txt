@@ -1,0 +1,3 @@
+2026/04/17 08:44:50 connected to MySQL and MongoDB; using collection dualwrite.products
+2026/04/17 08:44:50 Dual-Write Product API running on :8082
+exit status 1

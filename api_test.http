@@ -1,0 +1,36 @@
+### 1. Tambah Produk baru (Electronic)
+POST http://localhost:8082/product
+Content-Type: application/json
+
+{
+  "name": "Smartphone XYZ",
+  "description": "Smartphone dengan kamera AI dan baterai tahan lama.",
+  "category": "Electronic",
+  "price": 4999999,
+  "stock": 120,
+  "tags": ["electronic", "smartphone", "best-seller"]
+}
+
+### 2. Ambil Semua Produk
+GET http://localhost:8082/products
+
+### 3. Update Harga Produk berdasarkan ID
+# Ganti {id} dengan ID produk yang dihasilkan oleh request create.
+PUT http://localhost:8082/product/{id}
+Content-Type: application/json
+
+{
+  "name": "Smartphone XYZ",
+  "description": "Smartphone dengan kamera AI dan baterai tahan lama.",
+  "category": "Electronic",
+  "price": 4599999,
+  "stock": 120,
+  "tags": ["electronic", "smartphone", "promo"]
+}
+
+### 4. Cari Produk dengan kategori "Fashion" dan rentang harga tertentu
+GET http://localhost:8082/products?category=Fashion&min_price=200000&max_price=2000000
+
+### 5. Hapus Produk
+# Ganti {id} dengan ID produk yang ingin dihapus.
+DELETE http://localhost:8082/product/{id}
