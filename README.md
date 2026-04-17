@@ -145,16 +145,48 @@ curl -X DELETE http://localhost:8082/product/prod-1680000000000000000
 curl "http://localhost:8082/products?category=Fashion&min_price=500000&max_price=1000000&tags=sport,diskon"
 ```
 
+## Clone dari GitHub
+Untuk mulai dari awal, clone repo ini dari GitHub:
+```bash
+git clone https://github.com/meilashinta/mongodb-implementation.git
+cd mongodb-implementation
+```
+
 ## Setup Lokal
 ### Persyaratan
 - Go 1.22+
-- MySQL berjalan dengan database `dualwrite`
-- MongoDB berjalan lokal pada `mongodb://localhost:27017`
+- Docker dan Docker Compose (untuk menjalankan MySQL, MongoDB, dan Adminer)
+- Port `8082` tersedia untuk API
+- Port `8083` tersedia untuk Adminer
 
-### Konfigurasi environment
-Anda dapat mengatur environment variables:
+### Jalankan dengan Docker Compose
+1. Buka terminal di folder proyek:
+   ```bash
+   cd "d:\SEM 6\Topik Khusus\matkul-topik-khusus-3"
+   ```
+2. Nyalakan layanan database dan Adminer:
+   ```bash
+   docker-compose up -d
+   ```
+3. Tunggu sampai container `dualwrite_mysql`, `dualwrite_mongodb`, dan `dualwrite_adminer` berjalan.
+
+### Login Adminer
+Buka:
+- `http://localhost:8083/`
+
+Gunakan kredensial berikut:
+- System: `MySQL`
+- Server: `mysql`
+- Username: `appuser`
+- Password: `password`
+- Database: `dualwrite`
+
+> Catatan: `Server = mysql` karena Adminer berjalan di container yang sama dengan MySQL.
+
+### Konfigurasi environment (opsional)
+Jika Anda ingin menjalankan aplikasi Go langsung dari host tanpa Docker untuk MySQL dan MongoDB lokal, gunakan environment variables:
 ```bash
-export MYSQL_DSN="user:password@tcp(localhost:3306)/dualwrite?parseTime=true"
+export MYSQL_DSN="appuser:password@tcp(localhost:3306)/dualwrite?parseTime=true"
 export MYSQL_MAX_OPEN_CONNS=25
 export MYSQL_MAX_IDLE_CONNS=10
 export MONGODB_URI="mongodb://localhost:27017"
@@ -164,8 +196,22 @@ export MONGODB_MAX_POOL_SIZE=100
 ```
 
 ### Menjalankan aplikasi
+1. Pastikan Docker Compose sudah berjalan:
+   ```bash
+   docker-compose up -d
+   ```
+2. Jalankan Go dari root proyek:
+   ```bash
+   go mod tidy
+   go run main.go
+   ```
+3. Akses API:
+   - Root: `http://localhost:8082/`
+   - Products: `http://localhost:8082/products`
+
+Jika ingin menghentikan layanan Docker:
 ```bash
-go run main.go
+docker-compose down
 ```
 
 ## MCP Setup (VS Code Copilot)
