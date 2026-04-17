@@ -1,31 +1,30 @@
 # Dual-Write Product API
 
 ## Ringkasan
-Dual-Write Product API adalah layanan backend Golang untuk manajemen katalog produk e-commerce. Aplikasi ini menggunakan pola Dual-Write untuk menyimpan data ke:
-- **MySQL** sebagai *Source of Truth* untuk transaksi dan laporan inventaris.
-- **MongoDB** sebagai *Read-Optimized Store* untuk performa baca tinggi pada etalase dan pencarian.
+Dual-Write Product API adalah backend Golang untuk katalog produk e-commerce. Aplikasi ini menerapkan pola dual-write:
+- **MySQL** sebagai *source of truth* untuk transaksi dan data utama.
+- **MongoDB** sebagai *read-optimized store* untuk query baca dan pencarian.
 
 ## Arsitektur
-Proyek disusun dalam lapisan terpisah:
-- `config` : inisialisasi koneksi database
-- `handlers` : HTTP handler dan endpoint
-- `services` : logika bisnis
-- `repositories` : akses data MySQL dan MongoDB
-- `models` : definisi struct dan filter produk
+Struktur utama aplikasi:
+- `config/` : koneksi database
+- `handlers/` : HTTP handler
+- `services/` : logika bisnis
+- `repositories/` : akses data MySQL dan MongoDB
+- `models/` : definisi produk dan filter
 
-## Dual-Write Table
-| Operasi | MySQL | MongoDB | Catatan |
+## Alur Dual-Write
+| Operasi | MySQL | MongoDB | Keterangan |
 |---|---|---|---|
-| Create | `INSERT INTO products` | `InsertOne` | MySQL ditulis terlebih dahulu, lalu MongoDB direplikasi |
-| Read All | - | `Find({})` | Semua baca disajikan dari MongoDB |
-| Read By ID | - | `FindOne({_id: id})` | MongoDB jadi read store 100% |
-| Search | - | `Find(query)` | Filter kategori, rentang harga, dan tags |
-| Update | `UPDATE products` | `UpdateOne({_id: id})` | Jika MySQL sukses, baru update MongoDB |
-| Delete | `DELETE FROM products` | `DeleteOne({_id: id})` | Hapus berurutan MySQL lalu MongoDB |
+| Create | `INSERT INTO products` | `InsertOne` | MySQL dulu, lalu MongoDB |
+| Read All | - | `Find({})` | Semua baca dari MongoDB |
+| Read By ID | - | `FindOne({_id: id})` | MongoDB sebagai sumber baca |
+| Search | - | `Find(query)` | Filter kategori, harga, tags |
+| Update | `UPDATE products` | `UpdateOne({_id: id})` | MySQL dulu, lalu MongoDB |
+| Delete | `DELETE FROM products` | `DeleteOne({_id: id})` | Hapus MySQL lalu MongoDB |
 
-## Struktur Database
-
-### MySQL DDL: tabel `products`
+## Skema Database
+### MySQL - tabel `products`
 ```sql
 CREATE TABLE IF NOT EXISTS products (
   id VARCHAR(64) PRIMARY KEY,
@@ -39,10 +38,9 @@ CREATE TABLE IF NOT EXISTS products (
   updated_at DATETIME NOT NULL
 );
 ```
-> Implementasi menyimpan `tags` sebagai string terpisah dengan koma di MySQL, sedangkan MongoDB menyimpan `tags` sebagai array.
+> Catatan: `tags` disimpan sebagai string koma di MySQL.
 
-### MongoDB Skema Dokumen
-Contoh dokumen `products` di MongoDB:
+### MongoDB - dokumen `products`
 ```json
 {
   "_id": "prod-1680000000000000000",
@@ -60,9 +58,12 @@ Contoh dokumen `products` di MongoDB:
 ## Endpoint API
 Base URL: `http://localhost:8082`
 
-Akses `http://localhost:8082/` akan menampilkan status API dan endpoint yang tersedia.
+### GET `/`
+Menampilkan status API:
+- `message`
+- `endpoints`
 
-### 1. `POST /product`
+### POST `/product`
 Tambah produk baru.
 
 Body JSON:
@@ -77,22 +78,22 @@ Body JSON:
 }
 ```
 
-### 2. `GET /products`
-Ambil daftar produk. Mendukung filter query:
+### GET `/products`
+Ambil semua produk. Mendukung query:
 - `category`
 - `min_price`
 - `max_price`
 - `tags` (dipisah koma)
 
-Contoh query:
+Contoh:
 - `/products?category=Fashion`
 - `/products?min_price=100000&max_price=1000000`
 - `/products?tags=sport,diskon`
 
-### 3. `GET /product/{id}`
+### GET `/product/{id}`
 Ambil detail produk berdasarkan ID.
 
-### 4. `PUT /product/{id}`
+### PUT `/product/{id}`
 Update produk.
 
 Body JSON:
@@ -107,10 +108,10 @@ Body JSON:
 }
 ```
 
-### 5. `DELETE /product/{id}`
+### DELETE `/product/{id}`
 Hapus produk berdasarkan ID.
 
-## Contoh cURL Testing
+## Contoh Testing
 ### Tambah produk
 ```bash
 curl -X POST http://localhost:8082/product \
@@ -145,8 +146,8 @@ curl -X DELETE http://localhost:8082/product/prod-1680000000000000000
 curl "http://localhost:8082/products?category=Fashion&min_price=500000&max_price=1000000&tags=sport,diskon"
 ```
 
-## Clone dari GitHub
-Untuk mulai dari awal, clone repo ini dari GitHub:
+## Mulai dari GitHub
+Clone repository:
 ```bash
 git clone https://github.com/meilashinta/mongodb-implementation.git
 cd mongodb-implementation
@@ -155,7 +156,7 @@ cd mongodb-implementation
 ## Setup Lokal
 ### Persyaratan
 - Go 1.22+
-- Docker dan Docker Compose (untuk menjalankan MySQL, MongoDB, dan Adminer)
+- Docker dan Docker Compose
 - Port `8082` tersedia untuk API
 - Port `8083` tersedia untuk Adminer
 
@@ -164,27 +165,46 @@ cd mongodb-implementation
    ```bash
    cd "d:\SEM 6\Topik Khusus\matkul-topik-khusus-3"
    ```
-2. Nyalakan layanan database dan Adminer:
+2. Jalankan layanan:
    ```bash
    docker-compose up -d
    ```
-3. Tunggu sampai container `dualwrite_mysql`, `dualwrite_mongodb`, dan `dualwrite_adminer` berjalan.
+3. Pastikan container `dualwrite_mysql`, `dualwrite_mongodb`, dan `dualwrite_adminer` berjalan.
 
 ### Login Adminer
 Buka:
 - `http://localhost:8083/`
 
-Gunakan kredensial berikut:
+Gunakan:
 - System: `MySQL`
 - Server: `mysql`
 - Username: `appuser`
 - Password: `password`
 - Database: `dualwrite`
 
-> Catatan: `Server = mysql` karena Adminer berjalan di container yang sama dengan MySQL.
+> `Server = mysql` karena Adminer berada di jaringan Docker Compose yang sama dengan MySQL.
 
-### Konfigurasi environment (opsional)
-Jika Anda ingin menjalankan aplikasi Go langsung dari host tanpa Docker untuk MySQL dan MongoDB lokal, gunakan environment variables:
+## Jalankan Aplikasi Go
+1. Pastikan Docker Compose sudah hidup:
+   ```bash
+   docker-compose up -d
+   ```
+2. Jalankan aplikasi:
+   ```bash
+   go mod tidy
+   go run main.go
+   ```
+3. Akses API:
+   - `http://localhost:8082/`
+   - `http://localhost:8082/products`
+
+### Hentikan Docker
+```bash
+docker-compose down
+```
+
+## Konfigurasi Opsional
+Jika ingin jalankan Go dari host tanpa Docker untuk database lokal:
 ```bash
 export MYSQL_DSN="appuser:password@tcp(localhost:3306)/dualwrite?parseTime=true"
 export MYSQL_MAX_OPEN_CONNS=25
@@ -195,57 +215,7 @@ export MONGODB_COLLECTION="products"
 export MONGODB_MAX_POOL_SIZE=100
 ```
 
-### Menjalankan aplikasi
-1. Pastikan Docker Compose sudah berjalan:
-   ```bash
-   docker-compose up -d
-   ```
-2. Jalankan Go dari root proyek:
-   ```bash
-   go mod tidy
-   go run main.go
-   ```
-3. Akses API:
-   - Root: `http://localhost:8082/`
-   - Products: `http://localhost:8082/products`
-
-Jika ingin menghentikan layanan Docker:
-```bash
-docker-compose down
-```
-
-## MCP Setup (VS Code Copilot)
-1. Pastikan VS Code sudah terhubung ke extension GitHub Copilot Chat.
-2. Buka folder proyek `d:\SEM 6\Topik Khusus\matkul-topik-khusus-3` di VS Code.
-3. Pastikan database lokal berjalan dan environment variables diatur.
-4. Jika extension mendukung Model Context Protocol (MCP), gunakan konfigurasi lokal atau `launch.json` untuk mengakses `MYSQL_DSN` dan `MONGODB_URI`.
-5. Contoh pengaturan MCP: gunakan endpoint/mode lokal yang membuka koneksi ke MySQL dan MongoDB saat bekerja dengan Copilot.
-
-> Catatan: MCP memungkinkan agent melihat konteks basis data lokal untuk membantu generasi query dan debugging. Pastikan akses jaringan dan hak baca/tulis database disetujui.
-
-## MongoDB Compass Query
-### Filter kategori
-```js
-{ "category": "Fashion" }
-```
-
-### Search harga dan tags
-```js
-{
-  "category": "Fashion",
-  "price": { "$gte": 500000, "$lte": 1000000 },
-  "tags": { "$all": ["sport", "diskon"] }
-}
-```
-
-### Sorting harga produk naik
-```js
-{}
-```
-
-Gunakan fitur sort di Compass untuk `price` ascending atau descending.
-
 ## Catatan Tambahan
-- Semua operasi baca menggunakan MongoDB untuk mengurangi beban MySQL.
-- Operasi write mengikuti alur `MySQL -> MongoDB` untuk menjaga konsistensi data.
-- Error write MongoDB setelah MySQL sukses dilog spesifik agar inkonsistensi dapat dilacak.
+- Semua baca produk menggunakan MongoDB.
+- Semua tulis akan menulis ke MySQL lalu direplikasi ke MongoDB.
+- Jika MongoDB gagal setelah MySQL sukses, log akan mencatat inkonsistensi.
